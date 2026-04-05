@@ -1,3 +1,4 @@
+# This entire file is AI made, edit later
 # 迷宮生成與路徑規劃視覺化工具 (Maze Algorithm Visualizer)
 
 ## Proposal Report
