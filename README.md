@@ -1,4 +1,4 @@
-LedgerLogic CLI
+# LedgerLogic CLI
 
 ## Proposal Report
 
