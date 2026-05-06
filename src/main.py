@@ -541,7 +541,7 @@ def show_help():
     [yellow]export <file>[/yellow]     : Save to JSON/CSV
     [yellow]import <file>[/yellow]     : Merge from JSON/CSV
     [yellow]import --replace <file>[/yellow] : Replace current data
-    [yellow]ls_vs_dict[/yellow]        : Compare list vs dict performance
+    [yellow]perftest[/yellow]        : Compare list vs dict performance
     [yellow]help[/yellow]              : This menu
     [yellow]exit[/yellow]              : Quit (auto-save)
 
@@ -699,7 +699,7 @@ def main():
                     console.print("[red]Usage: import <filename> or import --replace <filename>[/red]")
                     continue
                 transactions = import_transactions(transactions, filename, replace=replace)
-            elif cmd == "ls_vs_dict":
+            elif cmd == "perftest":
                 perf_test_list_vs_dict()
             else:
                 console.print(f"[red]Unknown command: {cmd}[/red] - try 'help'")
