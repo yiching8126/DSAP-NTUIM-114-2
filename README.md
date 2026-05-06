@@ -1,4 +1,4 @@
-# [專題名稱]：LedgerLogic CLI
+LedgerLogic CLI
 
 ## Proposal Report
 
