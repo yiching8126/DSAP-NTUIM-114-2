@@ -1,0 +1,18 @@
+{
+  "lunch": {
+    "dr": "Food",
+    "cr": "Cash"
+  },
+  "bus": {
+    "dr": "Transport",
+    "cr": "EasyCard"
+  },
+  "misc": {
+    "dr": "Miscellaneous",
+    "cr": "Cash"
+  },
+  "persist": {
+    "dr": "Pdr",
+    "cr": "Pcr"
+  }
+}

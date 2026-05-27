@@ -1,0 +1,9 @@
+[
+  {
+    "account": "Food",
+    "amount": 200,
+    "period": "monthly",
+    "start_date": "2025-01-01",
+    "end_date": null
+  }
+]
