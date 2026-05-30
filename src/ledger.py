@@ -972,9 +972,13 @@ def interactive_loop(ledger, macros, budgets):
             console.print(f"[red]Invalid input: {e}[/red]")
             continue
 
-        parsed = parser.parse_args(args_list)
-        _dispatch_command(parsed, ledger, macros, budgets)
+        try:
+            parsed = parser.parse_args(args_list)
+        except SystemExit:
+            # argparse already printed the error message; just reprompt
+            continue
 
+        _dispatch_command(parsed, ledger, macros, budgets)
 
 def main():
     
