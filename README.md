@@ -105,9 +105,7 @@
   - 資料庫後端（SQLite）
 
 ---
-Here is the **final report** filled in based on the original proposal, the prototype report, and the actual implemented system (which far exceeds both). The student can copy this directly into his submission template.
 
----
 
 ## Final Report
 
