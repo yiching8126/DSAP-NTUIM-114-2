@@ -105,4 +105,134 @@
   - 資料庫後端（SQLite）
 
 ---
+Here is the **final report** filled in based on the original proposal, the prototype report, and the actual implemented system (which far exceeds both). The student can copy this directly into his submission template.
 
+---
+
+## Final Report
+
+### 專案說明
+
+本專案實作了一個完整的命令列雙式記帳系統 – **LedgerLogic CLI 2.0**。使用者可以透過終端機快速記錄借貸交易、管理預算、使用巨集減少重複輸入，並支援跨工作階段的復原／重做、匯入／匯出、進階搜尋與自動儲存。
+
+與原始提案和雛型相比，最終版本超越了預期目標：
+
+| 功能 | 提案 | 雛型 | 最終實作 |
+|------|------|------|----------|
+| 雙式記帳 | ✅ | ✅ | ✅ |
+| 交易增刪改查 | ✅ | ✅ | ✅ |
+| 分類標籤（註解） | ✅ | ✅ | ✅ |
+| 持久化儲存 (JSON) | ✅ | ✅ | ✅ |
+| 匯出／匯入 CSV/JSON | ✅ | ✅ | ✅ |
+| 依日期／金額排序 | ✅ | ✅ | ✅ |
+| 每月收支摘要 | ❌ | ❌ | ✅（預算報告） |
+| 復原／重做 | ❌ | ✅ (記憶體) | ✅ 跨工作階段（指令日誌） |
+| 巨集（可編輯） | ❌ | ✅ (內建) | ✅ 可動態增刪改查 |
+| 預算追蹤 | ❌ | ✅ (每月) | ✅ 支援週／月／年 |
+| 互動式 REPL | ❌ | ✅ | ✅ |
+| 非互動式單行指令 | ❌ | ❌ | ✅ |
+| 進階搜尋（多條件） | ❌ | ❌ | ✅ |
+| 拼字錯誤建議 | ✅ (野心目標) | ❌ | ✅ (Levenshtein) |
+| 完整單元測試 | ❌ | ❌ | ✅ 25+ 測試 |
+| 自動化展示腳本 | ❌ | ❌ | ✅ |
+| 打包成 EXE | ✅ | ❌ | ✅ (PyInstaller) |
+
+**核心架構亮點：**
+
+1. **指令模式 (Command Pattern)** – 每一筆修改（新增、編輯、刪除、匯入）都封裝成指令物件，寫入 `journal.json`。復原／重做不僅限於記憶體，程式重啟後仍可還原先前操作。
+2. **檢查點機制 (Checkpointing)** – 每 50 個指令自動儲存完整狀態至 `ledger_dict.json`，並清空日誌，兼顧效能與資料安全。
+3. **持久化復原堆疊** – `_undo_stack` 與 `_redo_stack` 雖為記憶體內，但透過日誌重播可重建狀態；跨行程的復原需使用互動模式（單一行程）。
+4. **可編輯巨集** – 儲存於 `macros.json`，使用者可隨時新增、移除、列出、執行巨集，無須修改程式碼。
+5. **預算追蹤** – 支援 `weekly` / `monthly` / `yearly` 週期，報告當月實際支出與預算差異。
+6. **拼字錯誤偵測** – 使用 `difflib.get_close_matches()` 計算編輯距離，在互動模式與單行模式中提供「是否是指 'add'？」等建議。
+7. **完整測試涵蓋** – 使用 `pytest` 編寫 25 個單元與整合測試，涵蓋核心邏輯、CLI 解析、錯誤處理、Windows 編碼相容性。
+8. **跨平台相容** – 設定環境變數 `PYTHONIOENCODING=utf-8`、`TERM=dumb` 等，避開 Windows `cp950` 的 Unicode 錯誤。
+
+### 使用方式
+
+#### 環境需求
+- Python 3.9 或以上
+- 安裝 `rich` 套件：`pip install rich`
+- （選擇性）安裝 `pytest` 以執行測試
+
+#### 取得程式
+將 `ledger.py` 與 `tests/` 資料夾下載至同一目錄。
+
+#### 執行模式
+
+**1. 互動模式（REPL）**  
+```bash
+python ledger.py
+```
+出現 `>>` 提示號後，直接輸入指令（不加 `ledger` 前綴），例如：
+```
+>> add --desc "咖啡" --amount 3.5 --dr 飲食 --cr 現金
+>> list
+>> budget set 飲食 500 --period monthly
+>> budget show
+>> undo
+>> q
+```
+
+**2. 單行指令模式**  
+適合腳本化或快速記錄：
+```bash
+python ledger.py add --desc "午餐" --amount 12 --dr 飲食 --cr 現金
+python ledger.py list --sort amount
+python ledger.py balance
+```
+
+#### 主要指令一覽
+
+| 指令 | 說明 | 範例 |
+|------|------|------|
+| `add --desc ... --amount ... --dr ... --cr ...` | 新增交易 | `add --desc "咖啡" --amount 3.5 --dr 飲食 --cr 現金` |
+| `list [--sort date\|amount]` | 列出交易 | `list --sort amount` |
+| `balance [--date ...]` | 帳戶餘額 | `balance --date "2025-01-01 00:00:00"` |
+| `search --keyword ... --min-amount ...` | 多條件搜尋 | `search --keyword 咖啡 --min-amount 2` |
+| `edit <id> <field> <new>` | 編輯交易 | `edit 3 amount 49.99` |
+| `delete <id>` | 刪除交易 | `delete 5` |
+| `undo` / `redo` | 復原／重做 | `undo` |
+| `macro add <name> --dr ... --cr ...` | 新增巨集 | `macro add uber --dr 交通 --cr 現金` |
+| `macro run <name> <amount>` | 執行巨集 | `macro run uber 15.5` |
+| `budget set <帳戶> <金額> [--period ...]` | 設定預算 | `budget set 飲食 500 --period monthly` |
+| `budget show` | 顯示預算報告 | `budget show` |
+| `export <檔名>` | 匯出資料 (JSON/CSV) | `export backup.json` |
+| `import <檔名> [--replace]` | 匯入資料 | `import data.csv --replace` |
+| `rebuild-ids` | 重新編號交易 ID | `rebuild-ids` |
+
+#### 示範自動化腳本
+
+提供 `demo_extended.py`，執行後會自動演示所有主要功能（新增、列表、預算、巨集、復原/重做、搜尋、匯出），並展示拼字錯誤建議。執行方式：
+```bash
+python demo_extended.py
+```
+
+#### 執行測試
+
+```bash
+pip install pytest
+pytest -v
+```
+預期所有 25 個測試皆通過。
+
+#### 打包成單一執行檔 (Windows)
+
+```bash
+pip install pyinstaller
+pyinstaller --onefile --name ledger ledger.py
+```
+產生的 `ledger.exe` 可獨立執行，無須安裝 Python。
+
+#### 資料檔案說明
+
+| 檔案 | 用途 |
+|------|------|
+| `ledger_dict.json` | 主要交易資料庫（檢查點） |
+| `journal.json` | 指令日誌（用於復原／重做） |
+| `macros.json` | 使用者自訂巨集 |
+| `budget.json` | 預算設定 |
+
+所有檔案皆為純文字 JSON，可手動備份或轉移到其他裝置。
+
+---
