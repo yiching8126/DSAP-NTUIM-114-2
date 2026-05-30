@@ -1,0 +1,39 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.so
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environment
+venv/
+env/
+.env
+.venv
+
+# LedgerLogic data files (user data – do NOT commit)
+ledger_dict.json
+journal.json
+macros.json
+budget.json
+
+# PyInstaller builds
+build/
+dist/
+*.spec
+
+# Executables (if you commit them elsewhere)
+*.exe
+*.exe~
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+
+# OS metadata
+.DS_Store
+Thumbs.db
