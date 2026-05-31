@@ -148,3 +148,48 @@ def test_q_still_exits_after_errors(temp_dir):
     ]
     output = run_interactive_commands(commands, env={"LEDGER_DATA_DIR": temp_dir})
     assert "Goodbye" in output or "exit" in output.lower()
+
+def test_export_missing_filename(temp_dir):
+    """Export without filename should prompt and then succeed."""
+    commands = [
+        'add --desc Test --amount 10 --dr A --cr B',
+        'export',
+        'test.json',          # response to prompt
+        'list',
+        'q'
+    ]
+    output = run_interactive_commands(commands, env={"LEDGER_DATA_DIR": temp_dir})
+    assert "No filename provided" in output
+    assert "Exported to test.json" in output
+    # Verify the file was actually created
+    import os
+    assert os.path.exists(os.path.join(temp_dir, "test.json"))
+
+def test_export_wrong_extension(temp_dir):
+    """Export with .txt extension should be rejected."""
+    commands = [
+        'export data.txt',
+        'q'
+    ]
+    output = run_interactive_commands(commands, env={"LEDGER_DATA_DIR": temp_dir})
+    assert "Unsupported extension" in output
+
+def test_export_extra_arguments(temp_dir):
+    """Export with extra arguments should show error."""
+    commands = [
+        'export data.json extra1 extra2',
+        'q'
+    ]
+    output = run_interactive_commands(commands, env={"LEDGER_DATA_DIR": temp_dir})
+    assert "Too many arguments" in output
+
+def test_export_no_transactions(temp_dir):
+    """Export when there are no transactions should still create file (empty or header only)."""
+    commands = [
+        'export empty.csv',
+        'q'
+    ]
+    output = run_interactive_commands(commands, env={"LEDGER_DATA_DIR": temp_dir})
+    assert "Exported to empty.csv" in output
+    import os
+    assert os.path.exists(os.path.join(temp_dir, "empty.csv"))

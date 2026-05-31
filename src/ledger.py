@@ -511,19 +511,30 @@ class Ledger:
             transactions = list(self._transactions.values())
         ext = os.path.splitext(filename)[1].lower()
         data = [tx.to_dict() for tx in transactions]
-        if ext == ".json":
-            with open(filename, "w") as f:
-                json.dump(data, f, indent=2)
-        elif ext == ".csv":
-            with open(filename, "w", newline="") as f:
-                if data:
-                    writer = csv.DictWriter(f, fieldnames=data[0].keys())
-                    writer.writeheader()
-                    writer.writerows(data)
-                else:
-                    f.write("")
+        
+        # Determine full path: if filename is absolute, use it; otherwise join with SCRIPT_DIR
+        if os.path.isabs(filename):
+            full_path = filename
         else:
-            raise ValueError("Unsupported format. Use .json or .csv")
+            full_path = os.path.join(SCRIPT_DIR, filename)
+        
+        try:
+            if ext == ".json":
+                with open(full_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+            elif ext == ".csv":
+                with open(full_path, "w", newline="", encoding="utf-8") as f:
+                    if data:
+                        writer = csv.DictWriter(f, fieldnames=data[0].keys())
+                        writer.writeheader()
+                        writer.writerows(data)
+                    else:
+                        f.write("")
+            else:
+                raise ValueError("Unsupported format. Use .json or .csv")
+        except Exception as e:
+            raise e  # Let caller handle
+    
 
     def import_transactions(self, filename: str, replace: bool = False):
         ext = os.path.splitext(filename)[1].lower()
@@ -750,7 +761,8 @@ def setup_parser():
     budget_sub.add_parser("show")
 
     export_parser = subparsers.add_parser("export", help="Export transactions")
-    export_parser.add_argument("filename")
+    export_parser.add_argument("filename", nargs='?', help="Output filename (optional; will prompt if missing)")
+    export_parser.add_argument("extra", nargs='*', help=argparse.SUPPRESS)  # catch extra arguments
 
     import_parser = subparsers.add_parser("import", help="Import transactions")
     import_parser.add_argument("filename")
@@ -913,9 +925,34 @@ def _dispatch_command(args, ledger, macros, budgets):
                 )
             console.print(table)
 
+
+
     elif args.command == "export":
-        ledger.export(args.filename)
-        console.print(f"[green]Exported to {args.filename}[/green]")
+        # Handle missing filename
+        filename = args.filename
+        if not filename:
+            console.print("[yellow]No filename provided.[/yellow]")
+            while True:
+                filename = input("Enter export filename (e.g., data.json or data.csv): ").strip()
+                if filename:
+                    break
+                console.print("[red]Filename cannot be empty. Try again.[/red]")
+        # Check for extra arguments
+        if hasattr(args, 'extra') and args.extra:
+            console.print(f"[red]Too many arguments: {args.extra}. Usage: export <filename>[/red]")
+            return
+        # Validate extension
+        ext = os.path.splitext(filename)[1].lower()
+        if ext not in ('.json', '.csv'):
+            console.print(f"[red]Unsupported extension '{ext}'. Please use .json or .csv.[/red]")
+            return
+        # Perform export
+        try:
+            ledger.export(filename)
+            console.print(f"[green]Exported to {filename}[/green]")
+        except Exception as e:
+            console.print(f"[red]Export failed: {e}[/red]")
+            
 
     elif args.command == "import":
         try:
