@@ -106,7 +106,6 @@
 
 ---
 
-
 ## Final Report
 
 ### 專案說明
@@ -121,30 +120,32 @@
 | 交易增刪改查 | ✅ | ✅ | ✅ |
 | 分類標籤（註解） | ✅ | ✅ | ✅ |
 | 持久化儲存 (JSON) | ✅ | ✅ | ✅ |
-| 匯出／匯入 CSV/JSON | ✅ | ✅ | ✅ |
+| 匯出／匯入 CSV/JSON | ✅ | ✅ | ✅ + 錯誤處理 |
 | 依日期／金額排序 | ✅ | ✅ | ✅ |
 | 每月收支摘要 | ❌ | ❌ | ✅（預算報告） |
 | 復原／重做 | ❌ | ✅ (記憶體) | ✅ 跨工作階段（指令日誌） |
-| 巨集（可編輯） | ❌ | ✅ (內建) | ✅ 可動態增刪改查 |
+| 巨集（可編輯） | ❌ | ✅ (內建) | ✅ 可動態增刪改查，永久儲存 |
 | 預算追蹤 | ❌ | ✅ (每月) | ✅ 支援週／月／年 |
-| 互動式 REPL | ❌ | ✅ | ✅ |
+| 互動式 REPL | ❌ | ✅ | ✅ 不因參數錯誤而中斷 |
 | 非互動式單行指令 | ❌ | ❌ | ✅ |
 | 進階搜尋（多條件） | ❌ | ❌ | ✅ |
 | 拼字錯誤建議 | ✅ (野心目標) | ❌ | ✅ (Levenshtein) |
-| 完整單元測試 | ❌ | ❌ | ✅ 25+ 測試 |
+| 指令參數錯誤處理 | ❌ | ❌ | ✅ (提示並重新輸入) |
+| 完整單元測試 | ❌ | ❌ | ✅ 40+ 測試 |
 | 自動化展示腳本 | ❌ | ❌ | ✅ |
 | 打包成 EXE | ✅ | ❌ | ✅ (PyInstaller) |
 
 **核心架構亮點：**
 
-1. **指令模式 (Command Pattern)** – 每一筆修改（新增、編輯、刪除、匯入）都封裝成指令物件，寫入 `journal.json`。復原／重做不僅限於記憶體，程式重啟後仍可還原先前操作。
+1. **指令模式 (Command Pattern)** – 每一筆修改封裝成指令物件，寫入 `journal.json`。復原／重做不僅限於記憶體，程式重啟後仍可還原先前操作。
 2. **檢查點機制 (Checkpointing)** – 每 50 個指令自動儲存完整狀態至 `ledger_dict.json`，並清空日誌，兼顧效能與資料安全。
-3. **持久化復原堆疊** – `_undo_stack` 與 `_redo_stack` 雖為記憶體內，但透過日誌重播可重建狀態；跨行程的復原需使用互動模式（單一行程）。
-4. **可編輯巨集** – 儲存於 `macros.json`，使用者可隨時新增、移除、列出、執行巨集，無須修改程式碼。
-5. **預算追蹤** – 支援 `weekly` / `monthly` / `yearly` 週期，報告當月實際支出與預算差異。
-6. **拼字錯誤偵測** – 使用 `difflib.get_close_matches()` 計算編輯距離，在互動模式與單行模式中提供「是否是指 'add'？」等建議。
-7. **完整測試涵蓋** – 使用 `pytest` 編寫 25 個單元與整合測試，涵蓋核心邏輯、CLI 解析、錯誤處理、Windows 編碼相容性。
-8. **跨平台相容** – 設定環境變數 `PYTHONIOENCODING=utf-8`、`TERM=dumb` 等，避開 Windows `cp950` 的 Unicode 錯誤。
+3. **可編輯巨集** – 儲存於 `macros.json`，使用者可隨時新增、移除、列出、執行巨集，無須修改程式碼。
+4. **預算追蹤** – 支援 `weekly` / `monthly` / `yearly` 週期，報告當月實際支出與預算差異。
+5. **拼字錯誤偵測** – 使用 `difflib.get_close_matches()` 計算編輯距離，在互動模式與單行模式中提供「是否是指 'add'？」等建議。
+6. **參數錯誤不中斷** – 互動模式下，若輸入錯誤的旗標（如 `--amoun`）或缺少必要參數，程式會印出錯誤訊息並重新回到提示號，不會意外結束。
+7. **匯出錯誤處理** – 當匯出時未指定檔名、副檔名錯誤或給予過多參數時，會給予清楚提示，不會崩潰。
+8. **完整測試涵蓋** – 使用 `pytest` 編寫 40+ 個單元與整合測試，涵蓋核心邏輯、CLI 解析、錯誤處理、Windows 編碼相容性及邊界條件。
+9. **跨平台相容** – 設定環境變數 `PYTHONIOENCODING=utf-8`、`TERM=dumb` 等，避開 Windows `cp950` 的 Unicode 錯誤。
 
 ### 使用方式
 
@@ -153,10 +154,15 @@
 - 安裝 `rich` 套件：`pip install rich`
 - （選擇性）安裝 `pytest` 以執行測試
 
-#### 取得程式
-將 `ledger.py` 與 `tests/` 資料夾下載至同一目錄。
-
 #### 執行模式
+
+您可以選擇以下三種方式之一執行 LedgerLogic：
+
+| 方式 | 適用對象 | 說明 |
+|------|----------|------|
+| 🐍 Python 原始碼 | 開發者、有 Python 環境者 | 執行 `python ledger.py`，需先安裝 `rich` |
+| 📦 獨立執行檔 (.exe) | 一般使用者 | 下載 `ledger.exe`，直接雙擊或於 cmd 執行 |
+| 🧪 測試與腳本 | 驗證功能、自動化 | 使用 `test.bat` 或 `demo_extended.py` |
 
 **1. 互動模式（REPL）**  
 ```bash
@@ -171,9 +177,9 @@ python ledger.py
 >> undo
 >> q
 ```
+互動模式下，即使輸入錯誤參數（如 `add --desk ...`）程式也不會退出，只會顯示錯誤並重新提示。
 
 **2. 單行指令模式**  
-適合腳本化或快速記錄：
 ```bash
 python ledger.py add --desc "午餐" --amount 12 --dr 飲食 --cr 現金
 python ledger.py list --sort amount
@@ -197,7 +203,47 @@ python ledger.py balance
 | `budget show` | 顯示預算報告 | `budget show` |
 | `export <檔名>` | 匯出資料 (JSON/CSV) | `export backup.json` |
 | `import <檔名> [--replace]` | 匯入資料 | `import data.csv --replace` |
+| `benchmark [--num N]` | 效能比較（list vs dict） | `benchmark --num 5000` |
 | `rebuild-ids` | 重新編號交易 ID | `rebuild-ids` |
+
+#### 獨立執行檔 (Standalone Executable)
+
+若您不想安裝 Python 或設定任何環境，可以直接下載預先打包好的 **`ledger.exe`** 執行檔。
+
+- **下載位置**：本專案的 [GitHub Releases](https://github.com/yourusername/LedgerLogic/releases) 頁面（請替換為實際網址）
+- **檔案大小**：約 **50 MB**（因內含 Python 直譯器、`rich` 顯示套件及所有依賴，且採用 `--onefile` 模式打包）
+- **為何檔案較大？**  
+  PyInstaller 將 Python 執行環境與所有函式庫打包成單一檔案，雖然體積較大，但使用者無需安裝任何額外軟體，雙擊或於命令列即可執行。若需更小的檔案，可使用虛擬環境或 Nuitka 重新打包。
+- **使用方式**：
+  1. 下載 `ledger.exe` 至任一資料夾。
+  2. 開啟命令提示字元 (cmd)，切換到該資料夾。
+  3. 執行單行指令，例如：
+     ```cmd
+     ledger.exe add --desc "咖啡" --amount 3.5 --dr 飲食 --cr 現金
+     ```
+  4. 或直接執行 `ledger.exe` 進入互動模式 (REPL)，輸入指令後按 Enter，輸入 `q` 離開。
+- **注意事項**：
+  - 執行檔為 Windows 版本（64 位元）。若需其他平台，請自行使用 `wrap_to_exe.bat` 打包。
+  - 首次執行可能被防毒軟體誤判（因 PyInstaller 打包特性），請加入排除清單。
+  - 所有資料檔案（`ledger_dict.json` 等）會產生在 **執行檔所在的同一資料夾**。
+
+#### 輔助腳本與檔案說明
+
+為方便使用者快速上手，專案內附帶了以下輔助檔案：
+
+| 檔案 | 用途 | 使用方式 |
+|------|------|----------|
+| `setup.bat` | 自動檢查 Python 環境、更新 pip、安裝必要套件（rich, pytest, pyinstaller）。 | 雙擊執行，完成一次即可。 |
+| `start.bat` | 直接啟動互動式記帳程式（無需手動輸入 `python ledger.py`）。 | 雙擊即可進入 `>> ` 提示號。 |
+| `test.bat` | 執行全部測試（等同 `pytest -v`），並在結束後暫停，方便觀看結果。 | 雙擊執行，所有測試通過即顯示綠色。 |
+| `wrap_to_exe.bat` | 自動安裝 PyInstaller 並將 `ledger.py` 打包成單一 `ledger.exe` 執行檔。 | 雙擊執行，完成後 `dist/ledger.exe` 即可獨立使用。 |
+| `test.json` | 範例交易資料檔案，可用於匯入測試（例如 `import test.json --replace`）。 | 僅供測試，可自由修改。 |
+
+> 💡 **建議流程**：
+> 1. 下載專案後，先執行 `setup.bat` 安裝依賴。
+> 2. 執行 `start.bat` 體驗互動式記帳。
+> 3. 執行 `test.bat` 驗證程式正確性。
+> 4. （選擇性）執行 `wrap_to_exe.bat` 打包成 `.exe` 以便分享。
 
 #### 示範自動化腳本
 
@@ -212,7 +258,7 @@ python demo_extended.py
 pip install pytest
 pytest -v
 ```
-預期所有 25 個測試皆通過。
+預期所有 40+ 個測試皆通過。
 
 #### 打包成單一執行檔 (Windows)
 
@@ -228,9 +274,8 @@ pyinstaller --onefile --name ledger ledger.py
 |------|------|
 | `ledger_dict.json` | 主要交易資料庫（檢查點） |
 | `journal.json` | 指令日誌（用於復原／重做） |
-| `macros.json` | 使用者自訂巨集 |
+| `macros.json` | 使用者自訂巨集（永久儲存） |
 | `budget.json` | 預算設定 |
 
 所有檔案皆為純文字 JSON，可手動備份或轉移到其他裝置。
 
----
